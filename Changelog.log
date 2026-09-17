@@ -1,0 +1,15 @@
+2026-07-01
++ Menambahkan Auto Label untuk membuat label otomatis pada page aktif.
++ Menambahkan pengaturan posisi label: Tag, Left, dan Right.
++ Menambahkan format teks: Bold, Italic, Uppercase, Small Caps, Fraction Number, Em Dash, Colorize, dan Font Size 4-24 pt.
+
+2026-08-20
+~ Memperbaiki positioning label agar lebih akurat dan konsisten terhadap posisi yang dipilih.
+
+2026-08-21
++ Menambahkan pilihan label Kiss Cut Hires.
+~ Merapikan nama pilihan fungsi dan interface UserForm agar lebih mudah dipahami.
+
+2026-09-04
++ Menambahkan penyimpanan konfigurasi Auto Label dan Auto Label BP.
++ CheckBox, OptionButton, `cmbFontSize`, dan pilihan operator Auto Label BP kini dapat dimuat kembali otomatis.
