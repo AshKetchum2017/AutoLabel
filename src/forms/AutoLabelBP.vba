@@ -1,12 +1,12 @@
 Option Explicit
 
+' VBE: UserForm AutoLabelWizardBP needs TextBox (Name) = txbLabel.
 ' MacroRunner integration: no reference to the runner project is required.
 Private pMRObserver As Object
 Private pMRToken As String
 
-
 Private Const REG_APP_NAME As String = "RinCorelMacros"
-Private Const REG_SECTION_NAME As String = "AutoLabel"
+Private Const REG_SECTION_NAME As String = "AutoLabelBP"
 Private Const LABEL_TAG_X As Double = 306.2
 Private Const LABEL_TAG_Y As Double = 8.8
 Private Const UNI_LABEL_GAP_X As Double = 3#
@@ -30,6 +30,10 @@ Private Const HI_DIE_FONT_SIZE As Single = 12!
 Private Const HI_KISS_FONT_SIZE As Single = 12!
 Private Const KISS_LABEL_FONT_SIZE As Single = 4!
 Private Const PREVIEW_FONT_SIZE As Single = 10!
+Private Const OP_ONE As String = "Saiful"
+Private Const OP_TWO As String = "Hafizh"
+Private Const OP_THREE As String = "Dori"
+Private Const OP_FOUR As String = "Reni"
 
 Private Sub chkMasterPage_Click()
 
@@ -38,7 +42,7 @@ End Sub
 Private Sub cmdSaveConfig_Click()
 
     SaveCurrentConfig
-    MsgBox "Pengaturan Auto Label berhasil disimpan.", vbInformation
+    MsgBox "Pengaturan Auto Label BP berhasil disimpan.", vbInformation
 
 End Sub
 
@@ -50,6 +54,13 @@ Private Sub UserForm_Initialize()
     For fontSize = MIN_FONT_SIZE To MAX_FONT_SIZE
         cmbFontSize.AddItem CStr(fontSize)
     Next fontSize
+
+    cmbOperator.Clear
+    cmbOperator.AddItem OP_ONE
+    cmbOperator.AddItem OP_TWO
+    cmbOperator.AddItem OP_THREE
+    cmbOperator.AddItem OP_FOUR
+    cmbOperator.ListIndex = 0
 
     If optHiDie.value Then
         cmbFontSize.Text = CStr(HI_DIE_FONT_SIZE)
@@ -75,6 +86,7 @@ Private Sub LoadSavedConfig()
     optHiDie.value = CBool(GetSetting(REG_APP_NAME, REG_SECTION_NAME, "optHiDie", CStr(optHiDie.value)))
     optHiKiss.value = CBool(GetSetting(REG_APP_NAME, REG_SECTION_NAME, "optHiKiss", CStr(optHiKiss.value)))
     optUniLabel.value = CBool(GetSetting(REG_APP_NAME, REG_SECTION_NAME, "optUniLabel", CStr(optUniLabel.value)))
+    cmbOperator.Text = GetSetting(REG_APP_NAME, REG_SECTION_NAME, "cmbOperator", cmbOperator.Text)
 
     LoadSavedFontSize
 
@@ -106,6 +118,7 @@ Private Sub SaveCurrentConfig()
     SaveSetting REG_APP_NAME, REG_SECTION_NAME, "optHiKiss", CStr(optHiKiss.value)
     SaveSetting REG_APP_NAME, REG_SECTION_NAME, "optUniLabel", CStr(optUniLabel.value)
     SaveSetting REG_APP_NAME, REG_SECTION_NAME, "cmbFontSize", Trim$(cmbFontSize.Text)
+    SaveSetting REG_APP_NAME, REG_SECTION_NAME, "cmbOperator", Trim$(cmbOperator.Text)
 
 End Sub
 
@@ -157,6 +170,10 @@ Private Sub cmbFontSize_Change()
 
 End Sub
 
+Private Sub cmbOperator_Change()
+
+End Sub
+
 Private Sub cmdCancel_Click()
 
     Unload Me
@@ -176,7 +193,7 @@ Private Sub cmdSubmit_Click()
 
     labelText = GetLabelText()
     If Len(labelText) = 0 Then
-        txtText.SetFocus
+        txbLabel.SetFocus
         Exit Sub
     End If
 
@@ -196,17 +213,15 @@ Private Sub cmdSubmit_Click()
         labelText, _
         cdrLanguageNone, _
         cdrCharSetMixed, _
-        txtText.Font.Name, _
+        txbLabel.Font.Name, _
         fontSize, _
         IIf(chkBold.value, cdrTrue, cdrFalse), _
         IIf(chkItalic.value, cdrTrue, cdrFalse), _
         cdrMixedFontLine, _
         textAlignment)
 
-    ApplyLabelTextFormatting s, labelText
     ApplySubmitPosition s
-
-    ActiveDocument.Unit = previousUnit
+    ApplyLabelTextFormatting s, labelText
 
     Unload Me
     Exit Sub
@@ -275,7 +290,7 @@ Private Sub optKissLabel_Click()
 
 End Sub
 
-Private Sub txtText_Change()
+Private Sub txbLabel_Change()
 
     UpdatePreview
 
@@ -283,7 +298,7 @@ End Sub
 
 Private Sub UpdatePreview()
 
-    With txtText
+    With txbLabel
         .Font.Bold = chkBold.value
         .Font.Italic = chkItalic.value
         .Font.Size = PREVIEW_FONT_SIZE
@@ -295,7 +310,7 @@ Private Function GetLabelText() As String
 
     Dim value As String
 
-    value = txtText.Text
+    value = txbLabel.Text
 
     If chkEmDash.value Then
         value = Replace(value, " - ", " " & ChrW$(8212) & " ", 1, 1, vbTextCompare)
@@ -628,14 +643,14 @@ Private Sub ApplySubmitPosition(ByVal labelShape As Shape)
     ElseIf optHiKiss.Value Then
 
         Set anchor = FindHiKissAnchor()
-        labelShape.Rotate -90#
+        labelShape.Rotate 90#
 
         If anchor Is Nothing Then
             labelShape.LeftX = LABEL_TAG_X
             SetTextBaselineX labelShape, LABEL_TAG_X
             labelShape.BottomY = LABEL_TAG_Y
         Else
-            SetTextBaselineX labelShape, anchor.LeftX + HI_KISS_GAP_X
+            SetTextBaselineX labelShape, anchor.RightX + HI_KISS_GAP_X
             labelShape.BottomY = anchor.BottomY + HI_KISS_GAP_Y
         End If
 
@@ -665,86 +680,192 @@ Private Sub ApplyLabelTextFormatting(ByVal labelShape As Shape, ByVal labelText 
         ApplyFractions labelShape, labelText
     End If
 
+    ApplyTextFill labelShape, 1, Len(labelText), 0, 0, 0, 100
+
     If chkColorize.value Then
-        ApplyColorize labelShape, labelText
-    Else
-        ApplyTextFill labelShape, 1, Len(labelText), 0, 0, 0, 100
+        ApplyOperatorFormatting labelShape, labelText
     End If
 
 End Sub
 
-Private Sub ApplyColorize(ByVal labelShape As Shape, ByVal labelText As String)
+Private Sub ApplyOperatorFormatting(ByVal labelShape As Shape, ByVal labelText As String)
 
-    Dim tagStart As Long
-    Dim tagEnd As Long
+    Dim dateStart As Long
+    Dim dateEnd As Long
+    Dim separatorPosition As Long
     Dim customerStart As Long
     Dim customerEnd As Long
-    Dim dashPosition As Long
-    Dim dayStart As Long
-    Dim dayEnd As Long
-    Dim slashPosition As Long
-    Dim monthStart As Long
-    Dim monthEnd As Long
-    Dim compactDateStart As Long
-    Dim compactDateEnd As Long
-    Dim markerStart As Long
-    Dim markerEnd As Long
-    Dim serialStart As Long
-    Dim serialEnd As Long
+    Dim operatorName As String
+    Dim custCy As Long
+    Dim custMg As Long
+    Dim custYl As Long
+    Dim custBk As Long
+    Dim seprCy As Long
+    Dim seprMg As Long
+    Dim seprYl As Long
+    Dim seprBk As Long
+    Dim dateCy As Long
+    Dim dateMg As Long
+    Dim dateYl As Long
+    Dim dateBk As Long
 
-    FindLeadingFpTag labelText, tagStart, tagEnd
-    If tagStart > 0 Then
-        ApplyTextFill labelShape, tagStart, tagEnd, 0, 60, 100, 0
-    End If
-
-    If Not FindDateParts(labelText, dayStart, dayEnd, slashPosition, monthStart, monthEnd) Then
-        If FindCompactDateParts(labelText, compactDateStart, compactDateEnd) Then
-            customerStart = CustomerNameStart(labelText)
-            dashPosition = SeparatorPositionBeforeDate(labelText, compactDateStart)
-            customerEnd = LastNonSpaceBefore(labelText, dashPosition)
-            ApplyTextFill labelShape, customerStart, customerEnd, 0, 0, 0, 100
-            ApplyTextFill labelShape, dashPosition, dashPosition, 0, 100, 100, 0
-            ApplyTextFill labelShape, compactDateStart, compactDateEnd, 100, 100, 0, 0
-            Exit Sub
-        End If
-
-        customerStart = CustomerNameStart(labelText)
-        customerEnd = CustomerNameEnd(labelText)
-        If tagStart = 0 Then
-            ApplyTextFill labelShape, customerStart, customerEnd, 0, 100, 0, 0
-        Else
-            ApplyTextFill labelShape, customerStart, customerEnd, 0, 0, 0, 100
-        End If
+    If Not chkColorize.value Then
+        ApplyTextFill labelShape, 1, Len(labelText), 0, 0, 0, 100
         Exit Sub
     End If
 
+    If Not ParseDateGrammar(labelText, dateStart, dateEnd, separatorPosition) Then
+        Exit Sub
+    End If
+
+    operatorName = Trim$(cmbOperator.Text)
+    Select Case operatorName
+        Case OP_ONE
+            custMg = 100
+            custYl = 100
+            seprBk = 100
+            dateBk = 100
+        Case OP_TWO
+            custBk = 100
+            seprBk = 100
+            dateBk = 100
+        Case OP_THREE
+            custMg = 100
+            seprBk = 100
+            dateBk = 100
+        Case OP_FOUR
+            custCy = 100
+            custMg = 100
+            seprBk = 100
+            dateBk = 100
+        Case Else
+            Exit Sub
+    End Select
+
     customerStart = CustomerNameStart(labelText)
-    dashPosition = SeparatorPositionBeforeDate(labelText, dayStart)
-    If dashPosition > 0 Then
-        customerEnd = LastNonSpaceBefore(labelText, dashPosition)
-        ApplyTextFill labelShape, dashPosition, dashPosition, 0, 100, 100, 0
+    If separatorPosition > 0 Then
+        customerEnd = LastNonSpaceBefore(labelText, separatorPosition)
     Else
-        customerEnd = LastNonSpaceBefore(labelText, dayStart)
+        customerEnd = LastNonSpaceBefore(labelText, dateStart)
     End If
 
-    ApplyTextFill labelShape, customerStart, customerEnd, 0, 0, 0, 100
-    ApplyTextFill labelShape, dayStart, dayEnd, 100, 0, 100, 0
-    ApplyTextFill labelShape, slashPosition, slashPosition, 100, 100, 0, 0
-    ApplyTextFill labelShape, monthStart, monthEnd, 100, 0, 100, 0
-
-    FindPostDateMarker labelText, monthEnd, markerStart, markerEnd
-    If markerStart > 0 Then
-        ApplyTextFill labelShape, markerStart, markerEnd, 0, 100, 0, 0
-        FindSerialNumber labelText, markerEnd, serialStart, serialEnd
-    Else
-        FindSerialNumber labelText, monthEnd, serialStart, serialEnd
+    ApplyTextFill labelShape, customerStart, customerEnd, custCy, custMg, custYl, custBk
+    If separatorPosition > 0 Then
+        ApplyTextFill labelShape, separatorPosition, separatorPosition, seprCy, seprMg, seprYl, seprBk
     End If
-
-    If serialStart > 0 Then
-        ApplyTextFill labelShape, serialStart, serialEnd, 100, 0, 0, 0
-    End If
+    ApplyTextFill labelShape, dateStart, dateEnd, dateCy, dateMg, dateYl, dateBk
 
 End Sub
+
+Private Function ParseDateGrammar( _
+    ByVal labelText As String, _
+    ByRef dateStart As Long, _
+    ByRef dateEnd As Long, _
+    ByRef separatorPosition As Long) As Boolean
+
+    Dim position As Long
+    Dim firstSlashPosition As Long
+    Dim secondSlashPosition As Long
+
+    dateEnd = Len(labelText)
+    Do While dateEnd > 0 And Mid$(labelText, dateEnd, 1) = " "
+        dateEnd = dateEnd - 1
+    Loop
+
+    If dateEnd <= 0 Then
+        Exit Function
+    End If
+
+    If dateEnd >= 8 And Mid$(labelText, dateEnd - 5, 1) = "/" Then
+        dateStart = dateEnd - 7
+    ElseIf dateEnd >= 5 And Mid$(labelText, dateEnd - 2, 1) = "/" Then
+        dateStart = dateEnd - 4
+    Else
+        dateStart = dateEnd - 5
+    End If
+
+    If dateStart <= 0 Then
+        Exit Function
+    End If
+
+    firstSlashPosition = InStr(dateStart, labelText, "/", vbTextCompare)
+    If firstSlashPosition = 0 Then
+        separatorPosition = dateStart - 1
+        Do While separatorPosition > 0 And Mid$(labelText, separatorPosition, 1) = " "
+            separatorPosition = separatorPosition - 1
+        Loop
+
+        If (separatorPosition <= 0 Or _
+            (Mid$(labelText, separatorPosition, 1) <> "-" And _
+             Mid$(labelText, separatorPosition, 1) <> ChrW$(8212))) And _
+           dateStart = dateEnd - 5 Then
+            dateStart = dateEnd - 3
+        End If
+    End If
+
+    If dateStart <= 0 Then
+        Exit Function
+    End If
+
+    firstSlashPosition = InStr(dateStart, labelText, "/", vbTextCompare)
+    If firstSlashPosition > 0 And firstSlashPosition < dateEnd Then
+        secondSlashPosition = InStr(firstSlashPosition + 1, labelText, "/", vbTextCompare)
+        If secondSlashPosition > 0 Then
+            If secondSlashPosition >= dateEnd Or _
+               secondSlashPosition - firstSlashPosition <> 3 Or _
+               dateEnd - secondSlashPosition <> 3 Then
+                Exit Function
+            End If
+        ElseIf firstSlashPosition - dateStart <> 2 Or dateEnd - firstSlashPosition <> 2 Then
+            Exit Function
+        End If
+
+        For position = dateStart To dateEnd
+            If Mid$(labelText, position, 1) <> "/" And _
+               Not Mid$(labelText, position, 1) Like "[0-9]" Then
+                Exit Function
+            End If
+        Next position
+    Else
+        If firstSlashPosition > 0 Then
+            Exit Function
+        End If
+
+        If dateEnd - dateStart + 1 <> 4 And dateEnd - dateStart + 1 <> 6 Then
+            Exit Function
+        End If
+
+        For position = dateStart To dateEnd
+            If Not Mid$(labelText, position, 1) Like "[0-9]" Then
+                Exit Function
+            End If
+        Next position
+    End If
+
+    separatorPosition = 0
+    If dateStart > 1 Then
+        separatorPosition = dateStart - 1
+        Do While separatorPosition > 0 And Mid$(labelText, separatorPosition, 1) = " "
+            separatorPosition = separatorPosition - 1
+        Loop
+
+        If separatorPosition > 0 Then
+            If Mid$(labelText, separatorPosition, 1) <> "-" And _
+               Mid$(labelText, separatorPosition, 1) <> ChrW$(8212) Then
+                separatorPosition = 0
+            End If
+        End If
+    End If
+
+    If separatorPosition > 0 Then
+        If LastNonSpaceBefore(labelText, separatorPosition) <= 0 Then
+            Exit Function
+        End If
+    End If
+
+    ParseDateGrammar = True
+
+End Function
 
 Private Sub ApplySmallCaps(ByVal labelShape As Shape, ByVal labelText As String)
 
@@ -908,31 +1029,6 @@ Private Function CustomerNameEnd(ByVal labelText As String) As Long
 
 End Function
 
-Private Function FindCompactDateParts(ByVal labelText As String, ByRef dateStart As Long, ByRef dateEnd As Long) As Boolean
-
-    Dim position As Long
-
-    position = Len(labelText)
-    Do While position > 0 And Mid$(labelText, position, 1) = " "
-        position = position - 1
-    Loop
-
-    dateEnd = position
-    dateStart = dateEnd - 5
-    If dateStart <= 0 Then
-        Exit Function
-    End If
-
-    For position = dateStart To dateEnd
-        If Not Mid$(labelText, position, 1) Like "[0-9]" Then
-            Exit Function
-        End If
-    Next position
-
-    FindCompactDateParts = (SeparatorPositionBeforeDate(labelText, dateStart) > 0)
-
-End Function
-
 Private Function SeparatorPositionBeforeDate(ByVal labelText As String, ByVal dateStart As Long) As Long
 
     Dim position As Long
@@ -958,8 +1054,10 @@ Private Function FindDateParts(ByVal labelText As String, ByRef dayStart As Long
 
     Dim dateStart As Long
     Dim dateEnd As Long
+    Dim separatorPosition As Long
+    Dim secondSlashPosition As Long
 
-    If Not FindFirstFractionRange(labelText, dateStart, dateEnd) Then
+    If Not ParseDateGrammar(labelText, dateStart, dateEnd, separatorPosition) Then
         Exit Function
     End If
 
@@ -971,7 +1069,12 @@ Private Function FindDateParts(ByVal labelText As String, ByRef dayStart As Long
     dayStart = dateStart
     dayEnd = slashPosition - 1
     monthStart = slashPosition + 1
-    monthEnd = dateEnd
+    secondSlashPosition = InStr(slashPosition + 1, labelText, "/", vbTextCompare)
+    If secondSlashPosition > 0 And secondSlashPosition < dateEnd Then
+        monthEnd = secondSlashPosition - 1
+    Else
+        monthEnd = dateEnd
+    End If
     FindDateParts = True
 
 End Function
