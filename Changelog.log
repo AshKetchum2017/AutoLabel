@@ -24,3 +24,8 @@
 + Folder PART bernomor menambahkan baris `PT.n` di akhir label hanya pada `optKissLabel`; nol di depan nomor dihapus.
 + MacroRunner dapat menjalankan behavior AutoLabelWizard dengan pengaturan kontrol dan `@cmdSubmit`; kontrol yang tidak disebut tetap memakai konfigurasi AutoLabel tersimpan.
 ~ `optHiDie` memakai kapital awal tiap kata pada nama pelanggan. `chkUppercase` tetap mengubah seluruh teks, dan uppercase bawaan `optKissLabel` tetap berlaku.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+2026-09-28
++ Auto Label BP kini mendukung token `/*~` dan gabungan teks dengan token, termasuk baris PART bernomor pada `optKissLabel`.
++ MacroRunner dapat mengisi opsi AutoLabelWizardBP, termasuk pilihan operator, lalu membuat label melalui `@cmdSubmit`.
