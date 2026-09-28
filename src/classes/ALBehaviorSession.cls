@@ -1,27 +1,33 @@
 Option Explicit
 
-' Class Module (Name) = ALBehaviorSession. Keeps one AutoLabelWizard instance per step.
-Private pMenu As AutoLabelWizard
+' Class Module (Name) = ALBehaviorSession. Keeps one Auto Label form instance per step.
+Private pMenu As Object
 Private pDefaults As Object
 
 Public Sub Start(ByVal script As String, ByVal observer As Object, ByVal token As String)
     Dim contract As New ALBehaviorContract, block As MRBehaviorBlock
     Dim ins As MRBehaviorInstruction, existing As Object, value As Variant
     Dim operation As String, number As Long, source As String, description As String
+    Dim formName As String
 
     On Error GoTo Failed
     operation = "Memvalidasi kontrak AutoLabel"
     Set block = contract.Validate(script)
+    If StrComp(block.MacroID, "AutoLabelBP", vbTextCompare) = 0 Then
+        formName = "AutoLabelWizardBP"
+    Else
+        formName = "AutoLabelWizard"
+    End If
 
-    operation = "Memeriksa AutoLabelWizard yang sudah terbuka"
+    operation = "Memeriksa " & formName & " yang sudah terbuka"
     For Each existing In VBA.UserForms
-        If StrComp(TypeName(existing), "AutoLabelWizard", vbTextCompare) = 0 Then _
-            Err.Raise 5, "ALBehaviorSession", "Tutup AutoLabelWizard yang sudah terbuka sebelum menjalankan behavior."
+        If StrComp(TypeName(existing), formName, vbTextCompare) = 0 Then _
+            Err.Raise 5, "ALBehaviorSession", "Tutup " & formName & " yang sudah terbuka sebelum menjalankan behavior."
     Next existing
     Set existing = Nothing
 
-    operation = "Membuka AutoLabelWizard"
-    Set pMenu = New AutoLabelWizard
+    operation = "Membuka " & formName
+    Set pMenu = VBA.UserForms.Add(formName)
     pMenu.MRBindRunner observer, token
     pMenu.Show vbModeless
     operation = "Membaca nilai awal kontrol AutoLabel"

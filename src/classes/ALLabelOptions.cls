@@ -6,6 +6,7 @@ Public Mode As String
 Public InputText As String
 Public FontName As String
 Public FontSize As Single
+Public OperatorName As String
 Public MasterPage As Boolean
 Public Uppercase As Boolean
 Public Bold As Boolean

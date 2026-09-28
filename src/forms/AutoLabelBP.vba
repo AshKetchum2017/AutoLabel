@@ -7,22 +7,6 @@ Private pMRToken As String
 
 Private Const REG_APP_NAME As String = "RinCorelMacros"
 Private Const REG_SECTION_NAME As String = "AutoLabelBP"
-Private Const LABEL_TAG_X As Double = 306.2
-Private Const LABEL_TAG_Y As Double = 8.8
-Private Const UNI_LABEL_GAP_X As Double = 3#
-Private Const UNI_LABEL_GAP_Y As Double = 0#
-Private Const TAG_Y_OFFSET As Double = 0#
-Private Const LABEL_HI_DIE_X As Double = 136#
-Private Const LABEL_HI_DIE_Y As Double = 6.2
-Private Const HI_DIE_GAP_X As Double = 5#
-Private Const HI_DIE_GAP_Y As Double = 0.5
-Private Const HI_DIE_Y_OFFSET As Double = 0#
-Private Const HI_KISS_GAP_X As Double = 0#
-Private Const HI_KISS_GAP_Y As Double = 10#
-Private Const KISS_LABEL_TAG_X As Double = 315.2
-Private Const KISS_LABEL_TAG_Y As Double = 3.8
-Private Const KISS_LABEL_GAP_X As Double = 0#
-Private Const KISS_LABEL_GAP_Y As Double = 0.5
 Private Const MIN_FONT_SIZE As Long = 4
 Private Const MAX_FONT_SIZE As Long = 24
 Private Const UNI_LABEL_FONT_SIZE As Single = 8!
@@ -181,82 +165,11 @@ Private Sub cmdCancel_Click()
 End Sub
 
 Private Sub cmdSubmit_Click()
+    Dim presenter As ALPresenter
 
-    Dim s As Shape
-    Dim labelText As String
-    Dim fontSize As Single
-    Dim previousUnit As cdrUnit
-    Dim targetLayer As Layer
-    Dim textX As Double
-    Dim textY As Double
-    Dim textAlignment As Long
-
-    labelText = GetLabelText()
-    If Len(labelText) = 0 Then
-        txbLabel.SetFocus
-        Exit Sub
-    End If
-
-    fontSize = SubmitFontSize()
-    textX = SubmitX()
-    textY = SubmitY()
-    textAlignment = SubmitAlignment()
-
-    On Error GoTo SubmitError
-    previousUnit = ActiveDocument.Unit
-    ActiveDocument.Unit = cdrMillimeter
-    Set targetLayer = GetSubmitLayer()
-
-    Set s = targetLayer.CreateArtisticText( _
-        textX, _
-        textY, _
-        labelText, _
-        cdrLanguageNone, _
-        cdrCharSetMixed, _
-        txbLabel.Font.Name, _
-        fontSize, _
-        IIf(chkBold.value, cdrTrue, cdrFalse), _
-        IIf(chkItalic.value, cdrTrue, cdrFalse), _
-        cdrMixedFontLine, _
-        textAlignment)
-
-    ApplySubmitPosition s
-    ApplyLabelTextFormatting s, labelText
-
-    Unload Me
-    Exit Sub
-
-SubmitError:
-    ActiveDocument.Unit = previousUnit
-    MsgBox "Auto Label gagal dibuat: " & Err.Description, vbExclamation
-
+    Set presenter = New ALPresenter
+    presenter.Submit Me
 End Sub
-
-Private Function GetSubmitLayer() As Layer
-
-    If chkMasterPage.value Then
-        Set GetSubmitLayer = GetOrCreatePageLayer(ActiveDocument.MasterPage, "Layer 1")
-    Else
-        Set GetSubmitLayer = GetOrCreatePageLayer(ActivePage, "Layer 1")
-    End If
-
-End Function
-
-Private Function GetOrCreatePageLayer(ByVal targetPage As Page, ByVal layerName As String) As Layer
-
-    Dim targetLayer As Layer
-
-    On Error Resume Next
-    Set targetLayer = targetPage.Layers(layerName)
-    On Error GoTo 0
-
-    If targetLayer Is Nothing Then
-        Set targetLayer = targetPage.CreateLayer(layerName)
-    End If
-
-    Set GetOrCreatePageLayer = targetLayer
-
-End Function
 
 Private Sub lblFontSize_Click()
 
@@ -306,24 +219,6 @@ Private Sub UpdatePreview()
 
 End Sub
 
-Private Function GetLabelText() As String
-
-    Dim value As String
-
-    value = txbLabel.Text
-
-    If chkEmDash.value Then
-        value = Replace(value, " - ", " " & ChrW$(8212) & " ", 1, 1, vbTextCompare)
-    End If
-
-    If chkUppercase.value Or optKissLabel.value Then
-        value = UCase$(value)
-    End If
-
-    GetLabelText = Trim$(value)
-
-End Function
-
 Private Function SubmitFontSize() As Single
 
     If optKissLabel.value Then
@@ -331,851 +226,6 @@ Private Function SubmitFontSize() As Single
     Else
         SubmitFontSize = SelectedFontSize()
     End If
-
-End Function
-
-Private Function FindAnchor( _
-    ByVal layerName As String, _
-    ByVal anchorName As String) As Shape
-
-    Dim lyr As Layer
-    Dim shp As Shape
-    Dim wasEditable As Boolean
-    Dim errorNumber As Long
-    Dim errorDescription As String
-    Dim errorSource As String
-
-    On Error Resume Next
-    Set lyr = ActivePage.Layers(layerName)
-    On Error GoTo 0
-
-    If lyr Is Nothing Then Exit Function
-
-    wasEditable = lyr.Editable
-    On Error GoTo RestoreLayer
-    lyr.Editable = True
-
-    For Each shp In lyr.Shapes
-
-        If LCase$(shp.Name) = LCase$(anchorName) Then
-            Set FindAnchor = shp
-            Exit For
-        End If
-
-    Next shp
-
-RestoreLayer:
-    errorNumber = Err.Number
-    errorDescription = Err.Description
-    errorSource = Err.Source
-    On Error Resume Next
-    lyr.Editable = wasEditable
-    On Error GoTo 0
-
-    If errorNumber <> 0 Then
-        Err.Raise errorNumber, errorSource, errorDescription
-    End If
-
-End Function
-
-Private Function FindHiDieAnchor() As Shape
-
-    Dim lyr As Layer
-    Dim shp As Shape
-    Dim wasEditable As Boolean
-    Dim errorNumber As Long
-    Dim errorDescription As String
-    Dim errorSource As String
-
-    On Error Resume Next
-    Set lyr = ActivePage.Layers("Regmark")
-    On Error GoTo 0
-
-    If lyr Is Nothing Then Exit Function
-
-    wasEditable = lyr.Editable
-    On Error GoTo RestoreLayer
-    lyr.Editable = True
-    
-    For Each shp In lyr.Shapes
-
-        If shp.Type = cdrRectangleShape Then
-            If shp.SizeWidth >= 100# _
-               And shp.SizeWidth <= 150# _
-               And shp.SizeHeight >= 0.8# _
-               And shp.SizeHeight <= 1.2# Then
-
-                Set FindHiDieAnchor = shp
-                Exit For
-
-            End If
-        End If
-
-    Next shp
-
-RestoreLayer:
-    errorNumber = Err.Number
-    errorDescription = Err.Description
-    errorSource = Err.Source
-    On Error Resume Next
-    lyr.Editable = wasEditable
-    On Error GoTo 0
-
-    If errorNumber <> 0 Then
-        Err.Raise errorNumber, errorSource, errorDescription
-    End If
-
-End Function
-
-Private Function FindHiKissAnchor() As Shape
-
-    Dim lyr As Layer
-    Dim shp As Shape
-    Dim wasEditable As Boolean
-    Dim errorNumber As Long
-    Dim errorDescription As String
-    Dim errorSource As String
-    Dim matchingCount As Long
-    Dim firstMatch As Shape
-    Dim shapeIndex As Long
-
-    On Error Resume Next
-    Set lyr = ActivePage.Layers("Regmark")
-    On Error GoTo 0
-
-    If lyr Is Nothing Then Exit Function
-
-    wasEditable = lyr.Editable
-    On Error GoTo RestoreLayer
-    lyr.Editable = True
-    
-    For shapeIndex = lyr.Shapes.Count To 1 Step -1
-        Set shp = lyr.Shapes(shapeIndex)
-
-        If shp.Type = cdrRectangleShape Then
-            If shp.SizeWidth = 3# _
-               And shp.SizeHeight = 3# Then
-
-                matchingCount = matchingCount + 1
-                If matchingCount = 1 Then
-                    Set firstMatch = shp
-                ElseIf matchingCount = 2 Then
-                    Set FindHiKissAnchor = shp
-                    Exit For
-                End If
-            End If
-        End If
-
-    Next shapeIndex
-
-RestoreLayer:
-    errorNumber = Err.Number
-    errorDescription = Err.Description
-    errorSource = Err.Source
-    On Error Resume Next
-    lyr.Editable = wasEditable
-    On Error GoTo 0
-
-    If FindHiKissAnchor Is Nothing Then
-        Set FindHiKissAnchor = firstMatch
-    End If
-
-    If errorNumber <> 0 Then
-        Err.Raise errorNumber, errorSource, errorDescription
-    End If
-
-End Function
-
-Private Function SubmitX() As Double
-    Dim anchor As Shape
-
-    If optKissLabel.Value Then
-        Set anchor = FindAnchor("scpro2_printonly", "filename")
-
-        If anchor Is Nothing Then
-            SubmitX = KISS_LABEL_TAG_X
-        Else
-            SubmitX = anchor.LeftX + KISS_LABEL_GAP_X
-        End If
-
-    ElseIf optHiDie.Value Then
-        Set anchor = FindHiDieAnchor()
-
-        If anchor Is Nothing Then
-            SubmitX = LABEL_HI_DIE_X
-        Else
-            ' 5 mm dari sisi kanan anchor
-            SubmitX = anchor.RightX + HI_DIE_GAP_X
-        End If
-
-    ElseIf optHiKiss.Value Then
-        Set anchor = FindHiKissAnchor()
-
-        If anchor Is Nothing Then
-            SubmitX = LABEL_TAG_X
-        Else
-            ' 5 mm dari sisi kanan anchor
-            SubmitX = anchor.LeftX + HI_KISS_GAP_X
-        End If
-        
-    Else
-        Set anchor = FindAnchor("scpro2_printonly", "filename")
-
-        If anchor Is Nothing Then
-            SubmitX = LABEL_TAG_X
-        Else
-            SubmitX = anchor.LeftX + UNI_LABEL_GAP_X
-        End If
-    End If
-End Function
-
-Private Function SubmitY() As Double
-    Dim anchor As Shape
-
-    If optKissLabel.value Then
-        Set anchor = FindAnchor("scpro2_printonly", "filename")
-        
-        If anchor Is Nothing Then
-            SubmitY = KISS_LABEL_TAG_Y
-        Else
-            SubmitY = anchor.BottomY - KISS_LABEL_GAP_Y + TAG_Y_OFFSET
-        End If
-
-    ElseIf optHiDie.value Then
-        Set anchor = FindHiDieAnchor()
-
-        If anchor Is Nothing Then
-            SubmitY = LABEL_HI_DIE_Y
-        Else
-            SubmitY = anchor.BottomY + HI_DIE_GAP_Y + HI_DIE_Y_OFFSET
-        End If
-    
-    ElseIf optHiKiss.value Then
-        Set anchor = FindHiKissAnchor()
-
-        If anchor Is Nothing Then
-            SubmitY = LABEL_TAG_Y
-        Else
-            SubmitY = anchor.BottomY + HI_KISS_GAP_Y + TAG_Y_OFFSET
-        End If
-
-    Else
-        Set anchor = FindAnchor("scpro2_printonly", "filename")
-
-        If anchor Is Nothing Then
-            SubmitY = LABEL_TAG_Y
-        Else
-            SubmitY = anchor.BottomY + UNI_LABEL_GAP_Y + TAG_Y_OFFSET
-        End If
-    End If
-
-End Function
-
-Private Function SubmitAlignment() As Long
-
-    If optKissLabel.value Or optHiDie.value Or optHiKiss.value Then
-        SubmitAlignment = cdrLeftAlignment
-    Else
-        SubmitAlignment = cdrRightAlignment
-    End If
-
-End Function
-
-Private Sub SetTextBaselineX(ByVal textShape As Shape, ByVal targetX As Double)
-
-    Dim x As Double
-    Dim y As Double
-    Dim w As Double
-    Dim h As Double
-
-    textShape.Text.Story.Paragraphs.Last.Baselines.GetBoundingBox _
-        x, y, w, h
-
-    textShape.Move targetX - x, 0#
-
-End Sub
-
-Private Sub SetTextBaselineY(ByVal textShape As Shape, ByVal targetY As Double)
-
-    Dim x As Double
-    Dim y As Double
-    Dim w As Double
-    Dim h As Double
-
-    textShape.Text.Story.Paragraphs.Last.Baselines.GetBoundingBox _
-        x, y, w, h
-
-    textShape.Move 0#, targetY - y
-
-End Sub
-
-Private Sub ApplySubmitPosition(ByVal labelShape As Shape)
-    Dim anchor As Shape
-
-    If optKissLabel.Value Then
-
-        Set anchor = FindAnchor("scpro2_printonly", "filename")
-
-        If anchor Is Nothing Then
-            labelShape.LeftX = KISS_LABEL_TAG_X
-            labelShape.BottomY = KISS_LABEL_TAG_Y
-        Else
-            labelShape.LeftX = anchor.LeftX + KISS_LABEL_GAP_X
-            labelShape.TopY = anchor.BottomY - KISS_LABEL_GAP_Y + TAG_Y_OFFSET
-        End If
-
-    ElseIf optHiDie.Value Then
-
-        Set anchor = FindHiDieAnchor()
-
-        If anchor Is Nothing Then
-            labelShape.LeftX = LABEL_HI_DIE_X
-        Else
-            labelShape.LeftX = anchor.RightX + HI_DIE_GAP_X
-        End If
-
-        If anchor Is Nothing Then
-            SetTextBaselineY labelShape, LABEL_HI_DIE_Y + HI_DIE_Y_OFFSET
-        Else
-            SetTextBaselineY labelShape, anchor.BottomY - HI_DIE_GAP_Y + HI_DIE_Y_OFFSET
-        End If
-
-    ElseIf optHiKiss.Value Then
-
-        Set anchor = FindHiKissAnchor()
-        labelShape.Rotate 90#
-
-        If anchor Is Nothing Then
-            labelShape.LeftX = LABEL_TAG_X
-            SetTextBaselineX labelShape, LABEL_TAG_X
-            labelShape.BottomY = LABEL_TAG_Y
-        Else
-            SetTextBaselineX labelShape, anchor.RightX + HI_KISS_GAP_X
-            labelShape.BottomY = anchor.BottomY + HI_KISS_GAP_Y
-        End If
-
-    Else
-
-        Set anchor = FindAnchor("scpro2_printonly", "filename")
-
-        If anchor Is Nothing Then
-            labelShape.RightX = LABEL_TAG_X
-            SetTextBaselineY labelShape, LABEL_TAG_Y + TAG_Y_OFFSET
-        Else
-            labelShape.RightX = anchor.LeftX - UNI_LABEL_GAP_X
-            SetTextBaselineY labelShape, anchor.BottomY + UNI_LABEL_GAP_Y + TAG_Y_OFFSET
-        End If
-
-
-    End If
-End Sub
-
-Private Sub ApplyLabelTextFormatting(ByVal labelShape As Shape, ByVal labelText As String)
-
-    If chkSmallCaps.value Then
-        ApplySmallCaps labelShape, labelText
-    End If
-
-    If chkFraction.value Then
-        ApplyFractions labelShape, labelText
-    End If
-
-    ApplyTextFill labelShape, 1, Len(labelText), 0, 0, 0, 100
-
-    If chkColorize.value Then
-        ApplyOperatorFormatting labelShape, labelText
-    End If
-
-End Sub
-
-Private Sub ApplyOperatorFormatting(ByVal labelShape As Shape, ByVal labelText As String)
-
-    Dim dateStart As Long
-    Dim dateEnd As Long
-    Dim separatorPosition As Long
-    Dim customerStart As Long
-    Dim customerEnd As Long
-    Dim operatorName As String
-    Dim custCy As Long
-    Dim custMg As Long
-    Dim custYl As Long
-    Dim custBk As Long
-    Dim seprCy As Long
-    Dim seprMg As Long
-    Dim seprYl As Long
-    Dim seprBk As Long
-    Dim dateCy As Long
-    Dim dateMg As Long
-    Dim dateYl As Long
-    Dim dateBk As Long
-
-    If Not chkColorize.value Then
-        ApplyTextFill labelShape, 1, Len(labelText), 0, 0, 0, 100
-        Exit Sub
-    End If
-
-    If Not ParseDateGrammar(labelText, dateStart, dateEnd, separatorPosition) Then
-        Exit Sub
-    End If
-
-    operatorName = Trim$(cmbOperator.Text)
-    Select Case operatorName
-        Case OP_ONE
-            custMg = 100
-            custYl = 100
-            seprBk = 100
-            dateBk = 100
-        Case OP_TWO
-            custBk = 100
-            seprBk = 100
-            dateBk = 100
-        Case OP_THREE
-            custMg = 100
-            seprBk = 100
-            dateBk = 100
-        Case OP_FOUR
-            custCy = 100
-            custMg = 100
-            seprBk = 100
-            dateBk = 100
-        Case Else
-            Exit Sub
-    End Select
-
-    customerStart = CustomerNameStart(labelText)
-    If separatorPosition > 0 Then
-        customerEnd = LastNonSpaceBefore(labelText, separatorPosition)
-    Else
-        customerEnd = LastNonSpaceBefore(labelText, dateStart)
-    End If
-
-    ApplyTextFill labelShape, customerStart, customerEnd, custCy, custMg, custYl, custBk
-    If separatorPosition > 0 Then
-        ApplyTextFill labelShape, separatorPosition, separatorPosition, seprCy, seprMg, seprYl, seprBk
-    End If
-    ApplyTextFill labelShape, dateStart, dateEnd, dateCy, dateMg, dateYl, dateBk
-
-End Sub
-
-Private Function ParseDateGrammar( _
-    ByVal labelText As String, _
-    ByRef dateStart As Long, _
-    ByRef dateEnd As Long, _
-    ByRef separatorPosition As Long) As Boolean
-
-    Dim position As Long
-    Dim firstSlashPosition As Long
-    Dim secondSlashPosition As Long
-
-    dateEnd = Len(labelText)
-    Do While dateEnd > 0 And Mid$(labelText, dateEnd, 1) = " "
-        dateEnd = dateEnd - 1
-    Loop
-
-    If dateEnd <= 0 Then
-        Exit Function
-    End If
-
-    If dateEnd >= 8 And Mid$(labelText, dateEnd - 5, 1) = "/" Then
-        dateStart = dateEnd - 7
-    ElseIf dateEnd >= 5 And Mid$(labelText, dateEnd - 2, 1) = "/" Then
-        dateStart = dateEnd - 4
-    Else
-        dateStart = dateEnd - 5
-    End If
-
-    If dateStart <= 0 Then
-        Exit Function
-    End If
-
-    firstSlashPosition = InStr(dateStart, labelText, "/", vbTextCompare)
-    If firstSlashPosition = 0 Then
-        separatorPosition = dateStart - 1
-        Do While separatorPosition > 0 And Mid$(labelText, separatorPosition, 1) = " "
-            separatorPosition = separatorPosition - 1
-        Loop
-
-        If (separatorPosition <= 0 Or _
-            (Mid$(labelText, separatorPosition, 1) <> "-" And _
-             Mid$(labelText, separatorPosition, 1) <> ChrW$(8212))) And _
-           dateStart = dateEnd - 5 Then
-            dateStart = dateEnd - 3
-        End If
-    End If
-
-    If dateStart <= 0 Then
-        Exit Function
-    End If
-
-    firstSlashPosition = InStr(dateStart, labelText, "/", vbTextCompare)
-    If firstSlashPosition > 0 And firstSlashPosition < dateEnd Then
-        secondSlashPosition = InStr(firstSlashPosition + 1, labelText, "/", vbTextCompare)
-        If secondSlashPosition > 0 Then
-            If secondSlashPosition >= dateEnd Or _
-               secondSlashPosition - firstSlashPosition <> 3 Or _
-               dateEnd - secondSlashPosition <> 3 Then
-                Exit Function
-            End If
-        ElseIf firstSlashPosition - dateStart <> 2 Or dateEnd - firstSlashPosition <> 2 Then
-            Exit Function
-        End If
-
-        For position = dateStart To dateEnd
-            If Mid$(labelText, position, 1) <> "/" And _
-               Not Mid$(labelText, position, 1) Like "[0-9]" Then
-                Exit Function
-            End If
-        Next position
-    Else
-        If firstSlashPosition > 0 Then
-            Exit Function
-        End If
-
-        If dateEnd - dateStart + 1 <> 4 And dateEnd - dateStart + 1 <> 6 Then
-            Exit Function
-        End If
-
-        For position = dateStart To dateEnd
-            If Not Mid$(labelText, position, 1) Like "[0-9]" Then
-                Exit Function
-            End If
-        Next position
-    End If
-
-    separatorPosition = 0
-    If dateStart > 1 Then
-        separatorPosition = dateStart - 1
-        Do While separatorPosition > 0 And Mid$(labelText, separatorPosition, 1) = " "
-            separatorPosition = separatorPosition - 1
-        Loop
-
-        If separatorPosition > 0 Then
-            If Mid$(labelText, separatorPosition, 1) <> "-" And _
-               Mid$(labelText, separatorPosition, 1) <> ChrW$(8212) Then
-                separatorPosition = 0
-            End If
-        End If
-    End If
-
-    If separatorPosition > 0 Then
-        If LastNonSpaceBefore(labelText, separatorPosition) <= 0 Then
-            Exit Function
-        End If
-    End If
-
-    ParseDateGrammar = True
-
-End Function
-
-Private Sub ApplySmallCaps(ByVal labelShape As Shape, ByVal labelText As String)
-
-    Dim tagStart As Long
-    Dim tagEnd As Long
-    Dim customerStart As Long
-    Dim customerEnd As Long
-    Dim dayStart As Long
-    Dim dayEnd As Long
-    Dim slashPosition As Long
-    Dim monthStart As Long
-    Dim monthEnd As Long
-    Dim markerStart As Long
-    Dim markerEnd As Long
-
-    customerEnd = CustomerNameEnd(labelText)
-    If customerEnd <= 0 Then
-        Exit Sub
-    End If
-
-    FindLeadingFpTag labelText, tagStart, tagEnd
-    If tagStart > 0 Then
-        ApplyLowercaseSmallCapsToRange labelShape, tagStart, tagEnd
-        customerStart = FirstNonSpacePosition(labelText, tagEnd + 1)
-    Else
-        customerStart = FirstNonSpacePosition(labelText, 1)
-    End If
-
-    ApplySmallCapsToRange labelShape, customerStart, customerEnd
-
-    If FindDateParts(labelText, dayStart, dayEnd, slashPosition, monthStart, monthEnd) Then
-        FindPostDateMarker labelText, monthEnd, markerStart, markerEnd
-        If markerStart > 0 Then
-            ApplyLowercaseSmallCapsToRange labelShape, markerStart, markerEnd
-        End If
-    End If
-
-End Sub
-
-Private Sub ApplySmallCapsToRange(ByVal labelShape As Shape, ByVal rangeStart As Long, ByVal rangeEnd As Long)
-
-    If rangeStart <= 0 Or rangeEnd < rangeStart Then
-        Exit Sub
-    End If
-
-    labelShape.Text.Story.Range(rangeStart - 1, rangeEnd).Case = cdrSmallCapsFontCase
-
-End Sub
-
-Private Sub ApplyLowercaseSmallCapsToRange(ByVal labelShape As Shape, ByVal rangeStart As Long, ByVal rangeEnd As Long)
-
-    Dim targetRange As TextRange
-
-    If rangeStart <= 0 Or rangeEnd < rangeStart Then
-        Exit Sub
-    End If
-
-    Set targetRange = labelShape.Text.Story.Range(rangeStart - 1, rangeEnd)
-    targetRange.Text = LCase$(targetRange.Text)
-    targetRange.Case = cdrSmallCapsFontCase
-
-End Sub
-
-Private Sub ApplyTextFill(ByVal labelShape As Shape, ByVal rangeStart As Long, ByVal rangeEnd As Long, ByVal cyan As Long, ByVal magenta As Long, ByVal yellow As Long, ByVal black As Long)
-
-    If rangeStart <= 0 Or rangeEnd < rangeStart Then
-        Exit Sub
-    End If
-
-    labelShape.Text.Story.Range(rangeStart - 1, rangeEnd).Fill.ApplyUniformFill CreateCMYKColor(cyan, magenta, yellow, black)
-
-End Sub
-
-Private Sub FindLeadingFpTag(ByVal labelText As String, ByRef tagStart As Long, ByRef tagEnd As Long)
-
-    Dim position As Long
-
-    position = FirstNonSpacePosition(labelText, 1)
-    If position = 0 Then
-        Exit Sub
-    End If
-
-    If UCase$(Mid$(labelText, position, 4)) = "[FP]" Then
-        tagStart = position
-        tagEnd = position + 3
-    End If
-
-End Sub
-
-Private Function CustomerNameStart(ByVal labelText As String) As Long
-
-    Dim tagStart As Long
-    Dim tagEnd As Long
-
-    FindLeadingFpTag labelText, tagStart, tagEnd
-    If tagEnd > 0 Then
-        CustomerNameStart = FirstNonSpacePosition(labelText, tagEnd + 1)
-    Else
-        CustomerNameStart = FirstNonSpacePosition(labelText, 1)
-    End If
-
-End Function
-
-Private Sub ApplyFractions(ByVal labelShape As Shape, ByVal labelText As String)
-
-    Dim fractionStart As Long
-    Dim fractionEnd As Long
-    Dim fractionRange As TextRange
-
-    If Not FindFirstFractionRange(labelText, fractionStart, fractionEnd) Then
-        Exit Sub
-    End If
-
-    Set fractionRange = labelShape.Text.Story.Range(fractionStart - 1, fractionEnd)
-    fractionRange.SetOpenTypeFeature "frac", 1
-
-End Sub
-
-Private Function CustomerNameEnd(ByVal labelText As String) As Long
-
-    Dim delimiterPosition As Long
-    Dim emDashPosition As Long
-    Dim slashPosition As Long
-    Dim position As Long
-
-    delimiterPosition = InStr(1, labelText, " - ", vbTextCompare)
-    If delimiterPosition > 1 Then
-        CustomerNameEnd = delimiterPosition - 1
-        Exit Function
-    End If
-
-    emDashPosition = InStr(1, labelText, " " & ChrW$(8212) & " ", vbTextCompare)
-    If emDashPosition > 1 Then
-        CustomerNameEnd = emDashPosition - 1
-        Exit Function
-    End If
-
-    slashPosition = InStr(1, labelText, "/", vbTextCompare)
-    If slashPosition <= 1 Then
-        CustomerNameEnd = Len(labelText)
-        Exit Function
-    End If
-
-    position = slashPosition - 1
-    Do While position > 0 And Mid$(labelText, position, 1) Like "[0-9]"
-        position = position - 1
-    Loop
-
-    Do While position > 0 And Mid$(labelText, position, 1) = " "
-        position = position - 1
-    Loop
-
-    If position > 0 And Mid$(labelText, position, 1) = "-" Then
-        position = position - 1
-        Do While position > 0 And Mid$(labelText, position, 1) = " "
-            position = position - 1
-        Loop
-    End If
-
-    CustomerNameEnd = position
-
-End Function
-
-Private Function SeparatorPositionBeforeDate(ByVal labelText As String, ByVal dateStart As Long) As Long
-
-    Dim position As Long
-    Dim currentChar As String
-
-    position = dateStart - 1
-    Do While position > 0 And Mid$(labelText, position, 1) = " "
-        position = position - 1
-    Loop
-
-    If position <= 0 Then
-        Exit Function
-    End If
-
-    currentChar = Mid$(labelText, position, 1)
-    If currentChar = "-" Or currentChar = ChrW$(8212) Then
-        SeparatorPositionBeforeDate = position
-    End If
-
-End Function
-
-Private Function FindDateParts(ByVal labelText As String, ByRef dayStart As Long, ByRef dayEnd As Long, ByRef slashPosition As Long, ByRef monthStart As Long, ByRef monthEnd As Long) As Boolean
-
-    Dim dateStart As Long
-    Dim dateEnd As Long
-    Dim separatorPosition As Long
-    Dim secondSlashPosition As Long
-
-    If Not ParseDateGrammar(labelText, dateStart, dateEnd, separatorPosition) Then
-        Exit Function
-    End If
-
-    slashPosition = InStr(dateStart, labelText, "/", vbTextCompare)
-    If slashPosition <= dateStart Or slashPosition >= dateEnd Then
-        Exit Function
-    End If
-
-    dayStart = dateStart
-    dayEnd = slashPosition - 1
-    monthStart = slashPosition + 1
-    secondSlashPosition = InStr(slashPosition + 1, labelText, "/", vbTextCompare)
-    If secondSlashPosition > 0 And secondSlashPosition < dateEnd Then
-        monthEnd = secondSlashPosition - 1
-    Else
-        monthEnd = dateEnd
-    End If
-    FindDateParts = True
-
-End Function
-
-Private Sub FindPostDateMarker(ByVal labelText As String, ByVal dateEnd As Long, ByRef markerStart As Long, ByRef markerEnd As Long)
-
-    Dim position As Long
-
-    position = FirstNonSpacePosition(labelText, dateEnd + 1)
-    If position = 0 Or position + 2 > Len(labelText) Then
-        Exit Sub
-    End If
-
-    If Mid$(labelText, position, 1) = "(" And _
-       UCase$(Mid$(labelText, position + 1, 1)) Like "[A-Z]" And _
-       Mid$(labelText, position + 2, 1) = ")" Then
-        markerStart = position
-        markerEnd = position + 2
-    End If
-
-End Sub
-
-Private Sub FindSerialNumber(ByVal labelText As String, ByVal searchAfter As Long, ByRef serialStart As Long, ByRef serialEnd As Long)
-
-    Dim position As Long
-
-    position = FirstNonSpacePosition(labelText, searchAfter + 1)
-    If position = 0 Then
-        Exit Sub
-    End If
-
-    If Not Mid$(labelText, position, 1) Like "[0-9]" Then
-        Exit Sub
-    End If
-
-    serialStart = position
-    Do While position <= Len(labelText) And Mid$(labelText, position, 1) Like "[0-9]"
-        position = position + 1
-    Loop
-    serialEnd = position - 1
-
-End Sub
-
-Private Function FirstNonSpacePosition(ByVal labelText As String, ByVal startPosition As Long) As Long
-
-    Dim position As Long
-
-    position = startPosition
-    Do While position <= Len(labelText) And Mid$(labelText, position, 1) = " "
-        position = position + 1
-    Loop
-
-    If position <= Len(labelText) Then
-        FirstNonSpacePosition = position
-    End If
-
-End Function
-
-Private Function LastNonSpaceBefore(ByVal labelText As String, ByVal beforePosition As Long) As Long
-
-    Dim position As Long
-
-    position = beforePosition - 1
-    Do While position > 0 And Mid$(labelText, position, 1) = " "
-        position = position - 1
-    Loop
-
-    LastNonSpaceBefore = position
-
-End Function
-
-Private Function FindFirstFractionRange(ByVal labelText As String, ByRef rangeStart As Long, ByRef rangeEnd As Long) As Boolean
-
-    Dim slashPosition As Long
-    Dim startPosition As Long
-    Dim endPosition As Long
-
-    slashPosition = InStr(1, labelText, "/", vbTextCompare)
-
-    Do While slashPosition > 0
-        startPosition = slashPosition - 1
-        Do While startPosition > 0 And Mid$(labelText, startPosition, 1) Like "[0-9]"
-            startPosition = startPosition - 1
-        Loop
-        startPosition = startPosition + 1
-
-        endPosition = slashPosition + 1
-        Do While endPosition <= Len(labelText) And Mid$(labelText, endPosition, 1) Like "[0-9]"
-            endPosition = endPosition + 1
-        Loop
-        endPosition = endPosition - 1
-
-        If startPosition < slashPosition And endPosition > slashPosition Then
-            rangeStart = startPosition
-            rangeEnd = endPosition
-            FindFirstFractionRange = True
-            Exit Function
-        End If
-
-        slashPosition = InStr(slashPosition + 1, labelText, "/", vbTextCompare)
-    Loop
 
 End Function
 
@@ -1197,6 +247,100 @@ Private Function SelectedFontSize() As Single
     SelectedFontSize = value
 
 End Function
+
+Public Function ALReadOptions() As ALLabelOptions
+    Dim options As ALLabelOptions
+
+    Set options = New ALLabelOptions
+    options.Mode = "bp"
+    options.InputText = txbLabel.Text
+    options.FontName = txbLabel.Font.Name
+    options.FontSize = SubmitFontSize()
+    options.OperatorName = cmbOperator.Text
+    options.MasterPage = chkMasterPage.Value
+    options.Uppercase = chkUppercase.Value
+    options.Bold = chkBold.Value
+    options.Italic = chkItalic.Value
+    options.SmallCaps = chkSmallCaps.Value
+    options.Colorize = chkColorize.Value
+    options.Fraction = chkFraction.Value
+    options.EmDash = chkEmDash.Value
+    options.KissLabel = optKissLabel.Value
+    options.HiDie = optHiDie.Value
+    options.HiKiss = optHiKiss.Value
+    options.UniLabel = optUniLabel.Value
+    Set ALReadOptions = options
+End Function
+
+Public Sub ALFocusInput()
+    txbLabel.SetFocus
+End Sub
+
+Public Sub ALClose()
+    Unload Me
+End Sub
+
+' MacroBehavior adapter for AutoLabelWizardBP.
+Public Sub MRBehaviorValue(ByVal target As String, ByVal value As Variant)
+    Select Case LCase$(target)
+        Case "txblabel": txbLabel.Text = CStr(value)
+        Case "cmbfontsize"
+            If VarType(value) = vbString Then
+                cmbFontSize.Text = CStr(value)
+            Else
+                cmbFontSize.Text = Trim$(Str$(CDbl(value)))
+            End If
+        Case "cmboperator": cmbOperator.Text = CStr(value)
+        Case "chkmasterpage": chkMasterPage.Value = CBool(value)
+        Case "chkuppercase": chkUppercase.Value = CBool(value)
+        Case "chkbold": chkBold.Value = CBool(value)
+        Case "chkitalic": chkItalic.Value = CBool(value)
+        Case "chksmallcaps": chkSmallCaps.Value = CBool(value)
+        Case "chkcolorize": chkColorize.Value = CBool(value)
+        Case "chkfraction": chkFraction.Value = CBool(value)
+        Case "chkemdash": chkEmDash.Value = CBool(value)
+        Case "optkisslabel"
+            optKissLabel.Value = CBool(value)
+            If optKissLabel.Value Then optKissLabel_Click
+        Case "opthidie"
+            optHiDie.Value = CBool(value)
+            If optHiDie.Value Then optHiDie_Click
+        Case "opthikiss"
+            optHiKiss.Value = CBool(value)
+            If optHiKiss.Value Then optHiKiss_Click
+        Case "optunilabel"
+            optUniLabel.Value = CBool(value)
+            If optUniLabel.Value Then optUniLabel_Click
+        Case Else: Err.Raise 5, "AutoLabelWizardBP.MRBehaviorValue", "Target tidak terdaftar: " & target
+    End Select
+    UpdatePreview
+End Sub
+
+Public Function MRBehaviorReadValue(ByVal target As String) As Variant
+    Select Case LCase$(target)
+        Case "cmbfontsize": MRBehaviorReadValue = cmbFontSize.Text
+        Case "cmboperator": MRBehaviorReadValue = cmbOperator.Text
+        Case "chkmasterpage": MRBehaviorReadValue = chkMasterPage.Value
+        Case "chkuppercase": MRBehaviorReadValue = chkUppercase.Value
+        Case "chkbold": MRBehaviorReadValue = chkBold.Value
+        Case "chkitalic": MRBehaviorReadValue = chkItalic.Value
+        Case "chksmallcaps": MRBehaviorReadValue = chkSmallCaps.Value
+        Case "chkcolorize": MRBehaviorReadValue = chkColorize.Value
+        Case "chkfraction": MRBehaviorReadValue = chkFraction.Value
+        Case "chkemdash": MRBehaviorReadValue = chkEmDash.Value
+        Case "optkisslabel": MRBehaviorReadValue = optKissLabel.Value
+        Case "opthidie": MRBehaviorReadValue = optHiDie.Value
+        Case "opthikiss": MRBehaviorReadValue = optHiKiss.Value
+        Case "optunilabel": MRBehaviorReadValue = optUniLabel.Value
+        Case Else: Err.Raise 5, "AutoLabelWizardBP.MRBehaviorReadValue", "Default tidak tersedia: " & target
+    End Select
+End Function
+
+Public Sub MRBehaviorSubmit()
+    Dim presenter As ALPresenter
+    Set presenter = New ALPresenter
+    presenter.Submit Me, True
+End Sub
 
 ' Called only by MRTargetBridge; normal menu entry points remain unchanged.
 Public Sub MRBindRunner(ByVal observer As Object, ByVal token As String)
