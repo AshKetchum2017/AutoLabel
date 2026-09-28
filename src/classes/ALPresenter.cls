@@ -48,7 +48,7 @@ Public Sub Submit(ByVal view As Object, Optional ByVal fromBehavior As Boolean =
     Set pModel = New ALInputModel
     pModel.Mode = pOptions.Mode
     Set doc = ActiveDocument
-    mainText = pModel.Resolve(pOptions.InputText, doc.FilePath)
+    mainText = pModel.Resolve(pOptions.InputText, doc.FilePath, pOptions.Fraction, pOptions.EmDash)
     If pOptions.EmDash Then
         mainText = Replace(mainText, " - ", " " & ChrW$(8212) & " ", 1, 1, vbTextCompare)
     End If
@@ -231,9 +231,9 @@ Private Function FindHiDieAnchor() As Shape
 
         If shp.Type = cdrRectangleShape Then
             If shp.SizeWidth >= 100# _
-               And shp.SizeWidth <= 150# _
-               And shp.SizeHeight >= 0.8# _
-               And shp.SizeHeight <= 1.2# Then
+               And shp.SizeWidth <= 200# _
+               And shp.SizeHeight >= 0.7# _
+               And shp.SizeHeight <= 1.3# Then
 
                 Set FindHiDieAnchor = shp
                 Exit For
