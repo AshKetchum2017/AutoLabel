@@ -63,11 +63,11 @@ Public Sub Submit(ByVal view As Object, Optional ByVal fromBehavior As Boolean =
     End If
 
     labelText = mainText
-    If pModel.HasToken And pOptions.KissLabel And Len(pModel.PartNumber) > 0 Then
-        labelText = labelText & vbCrLf & "PT." & pModel.PartNumber
+    If pModel.HasToken And pOptions.KissLabel And Len(pModel.partNumber) > 0 Then
+        labelText = labelText & vbCrLf & "PT." & pModel.partNumber
     End If
 
-    fontSize = pOptions.FontSize
+    fontSize = pOptions.fontSize
     textX = SubmitX()
     textY = SubmitY()
     textAlignment = SubmitAlignment()
@@ -98,9 +98,9 @@ Public Sub Submit(ByVal view As Object, Optional ByVal fromBehavior As Boolean =
     GoTo Done
 
 SubmitError:
-    errorNumber = Err.Number
-    errorSource = Err.Source
-    errorDescription = Err.Description
+    errorNumber = Err.number
+    errorSource = Err.source
+    errorDescription = Err.description
     If hasPreviousUnit Then
         On Error Resume Next
         doc.Unit = previousUnit
@@ -112,7 +112,11 @@ SubmitError:
         Set pView = Nothing
         Err.Raise errorNumber, errorSource, errorDescription
     End If
-    MsgBox "Auto Label gagal dibuat: " & errorDescription, vbExclamation
+    MsgBox "Auto Label gagal dibuat." & vbCrLf & _
+        "Number : " & CStr(errorNumber) & vbCrLf & _
+        "Source : " & errorSource & vbCrLf & _
+        "Error  : " & errorDescription, _
+        vbExclamation
     On Error Resume Next
     If Not pView Is Nothing Then pView.ALFocusInput
     On Error GoTo 0
@@ -195,9 +199,9 @@ Private Function FindAnchor( _
     Next shp
 
 RestoreLayer:
-    errorNumber = Err.Number
-    errorDescription = Err.Description
-    errorSource = Err.Source
+    errorNumber = Err.number
+    errorDescription = Err.description
+    errorSource = Err.source
     On Error Resume Next
     lyr.Editable = wasEditable
     On Error GoTo 0
@@ -232,8 +236,8 @@ Private Function FindHiDieAnchor() As Shape
         If shp.Type = cdrRectangleShape Then
             If shp.SizeWidth >= 100# _
                And shp.SizeWidth <= 200# _
-               And shp.SizeHeight >= 0.7# _
-               And shp.SizeHeight <= 1.3# Then
+               And shp.SizeHeight >= 0.7 _
+               And shp.SizeHeight <= 1.3 Then
 
                 Set FindHiDieAnchor = shp
                 Exit For
@@ -244,9 +248,9 @@ Private Function FindHiDieAnchor() As Shape
     Next shp
 
 RestoreLayer:
-    errorNumber = Err.Number
-    errorDescription = Err.Description
-    errorSource = Err.Source
+    errorNumber = Err.number
+    errorDescription = Err.description
+    errorSource = Err.source
     On Error Resume Next
     lyr.Editable = wasEditable
     On Error GoTo 0
@@ -299,9 +303,9 @@ Private Function FindHiKissAnchor() As Shape
     Next shapeIndex
 
 RestoreLayer:
-    errorNumber = Err.Number
-    errorDescription = Err.Description
-    errorSource = Err.Source
+    errorNumber = Err.number
+    errorDescription = Err.description
+    errorSource = Err.source
     On Error Resume Next
     lyr.Editable = wasEditable
     On Error GoTo 0
