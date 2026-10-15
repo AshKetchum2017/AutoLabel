@@ -30,3 +30,7 @@
 + Auto Label BP kini mendukung token `/*~` dan gabungan teks dengan token, termasuk baris PART bernomor pada `optKissLabel`.
 + MacroRunner dapat mengisi opsi AutoLabelWizardBP, termasuk pilihan operator, lalu membuat label melalui `@cmdSubmit`.
 + Auto Label dan BP mendukung token tanggal `/*dd`, `/*mm`, `/*yy`, `/*ddmm`, dan `/*ddmmyy` dari folder CDR aktif. `chkFraction` memberi pemisah `/`, `chkEmDash` memberi `-`, dan tanpa keduanya tanggal ditulis rapat.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+2026-10-15
+~ Membungkus perubahan dokumen saat Submit Auto Label dan Auto Label BP dalam satu CommandGroup, termasuk eksekusi melalui MacroRunner.

@@ -34,6 +34,7 @@ Public Sub Submit(ByVal view As Object, Optional ByVal fromBehavior As Boolean =
     Dim fontSize As Single
     Dim previousUnit As cdrUnit
     Dim hasPreviousUnit As Boolean
+    Dim commandGroupOpen As Boolean
     Dim targetLayer As Layer
     Dim textX As Double
     Dim textY As Double
@@ -68,6 +69,12 @@ Public Sub Submit(ByVal view As Object, Optional ByVal fromBehavior As Boolean =
     End If
 
     fontSize = pOptions.fontSize
+    If pOptions.Mode = "bp" Then
+        doc.BeginCommandGroup "Auto Label BP"
+    Else
+        doc.BeginCommandGroup "Auto Label"
+    End If
+    commandGroupOpen = True
     textX = SubmitX()
     textY = SubmitY()
     textAlignment = SubmitAlignment()
@@ -94,6 +101,8 @@ Public Sub Submit(ByVal view As Object, Optional ByVal fromBehavior As Boolean =
     If pOptions.Mode = "normal" Then ApplySubmitPosition labelShape
     doc.Unit = previousUnit
     hasPreviousUnit = False
+    doc.EndCommandGroup
+    commandGroupOpen = False
     pView.ALClose
     GoTo Done
 
@@ -104,6 +113,18 @@ SubmitError:
     If hasPreviousUnit Then
         On Error Resume Next
         doc.Unit = previousUnit
+        On Error GoTo 0
+    End If
+    If commandGroupOpen Then
+        On Error Resume Next
+        Err.Clear
+        doc.EndCommandGroup
+        If Err.number = 0 Then
+            commandGroupOpen = False
+        Else
+            errorDescription = errorDescription & vbCrLf & _
+                "CommandGroup gagal ditutup: " & Err.description
+        End If
         On Error GoTo 0
     End If
     If fromBehavior Then

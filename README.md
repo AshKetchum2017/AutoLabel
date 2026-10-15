@@ -76,6 +76,8 @@ Token tanggal mencari folder hari `1`–`31` di dalam folder bulan dengan format
 
 **Submit** menutup UserForm setelah label berhasil dibuat. Jika proses gagal, form tetap terbuka agar input dapat diperiksa. Macro mengembalikan unit dokumen ke unit sebelumnya setelah proses atau saat menangani error.
 
+Setiap **Submit** pada Auto Label dan Auto Label BP memakai satu CommandGroup untuk perubahan dokumen: akses anchor yang mengubah status layer sementara, perubahan unit, pembuatan layer bila diperlukan, pembuatan teks, format, dan posisi label. Grup ditutup setelah unit dipulihkan, sebelum form ditutup atau error dilaporkan; aturan ini juga berlaku untuk `@cmdSubmit` dari MacroRunner. Hasil parsial ketika proses gagal dapat dibatalkan melalui Undo.
+
 ## Integrasi MacroRunner
 
 MacroRunner dapat membuka kedua varian dan menjalankan **MacroBehavior**. Gunakan pasangan MacroID dan nama form yang sesuai:
